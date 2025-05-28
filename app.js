@@ -14,7 +14,8 @@ const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
 async function main() {
   try {
-    startChatbot();
+    const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+    startChatbot(genAI);
   } catch (error) {
     console.log("API Error: error");
     if (error.response && error.response.data) {

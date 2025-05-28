@@ -7,11 +7,11 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
-export async function startChatbot() {
+export async function startChatbot(genAI) {
   console.log("Iniciando o atendimento com o Sr. Gioppo...");
-  let conversationHistory = []; // Para manter o histórico da conversa com a IA
+  let conversationHistory = []; // Historico de conversa
 
-  // 1. Iniciar a conversa pedindo nome, email e telefone
+  // Conversa inicial
   let currentQuestion =
     "Olá! Seja muito bem-vindo(a) à Gioppo & Conti. Sou o Sr. Gioppo. Antes de começarmos, qual é seu nome completo, email e telefone?";
   console.log(`\n${currentQuestion}`);
@@ -23,7 +23,7 @@ export async function startChatbot() {
     parts: [{ text: `Cliente: ${clientInfo}` }],
   });
 
-  let clientName = "cliente"; // Extraia o nome se possível, ou use um placeholder
+  let clientName = "cliente";
 
   // Loop da conversa
   while (true) {
