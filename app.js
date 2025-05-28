@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import readline from "readline";
-import { startChatbot } from "./chatbot.js";
+import { startChatbot } from "./chatbot/chatbot.js";
 
 const GOOGLE_API_KEY = process.env.API_KEY;
 
@@ -12,15 +12,8 @@ if (!GOOGLE_API_KEY) {
 
 const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
-
 async function main() {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
     startChatbot();
   } catch (error) {
     console.log("API Error: error");
