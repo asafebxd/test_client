@@ -1,6 +1,6 @@
 import readline from "readline";
 import PERSONA_PROMPT from "./persona.js";
-import ALL_POSSIBLE_QUESTIONS from "./questions.js";
+import ALL_POSSILBE_QUESTIONS from "./questions.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -8,34 +8,37 @@ const rl = readline.createInterface({
 });
 
 export async function startChatbot(genAI) {
+  // Mensagem de start da conversa
   console.log("Iniciando o atendimento com o Sr. Gioppo...");
-  let conversationHistory = []; // Historico de conversa
+  let conversationHistory = [];
 
-  // Conversa inicial
-  let currentQuestion =
-    "Olá! Seja muito bem-vindo(a) à Gioppo & Conti. Sou o Sr. Gioppo. Antes de começarmos, qual é seu nome completo, email e telefone?";
-  console.log(`\n${currentQuestion}`);
+  // Bloco de primeira interação e Coleta de Dados Básicos
+  let currentQuesition =
+    "Olá! Seja Muito bem vindo(a) à Gioppo & Conti. Antes de começarmos, nos informe seu nome completo, email e telefone por favor!";
+  console.log(`\n${currentQuesition}`);
+  //Obtenha resposta do cliente
   let clientInfo = await new Promise((resolve) => {
     rl.question("Sua resposta: ", resolve);
   });
+  //Adiciona resposta do cliente ao historico
   conversationHistory.push({
     role: "user",
     parts: [{ text: `Cliente: ${clientInfo}` }],
   });
 
   let clientName = "cliente";
+  let clientEmail = "email";
+  let clientNumber = null;
 
-  // Loop da conversa
+  // --Bloco 2: Loop principal da conversa (AI Control)
   while (true) {
-    // A cada iteração, passamos todo o histórico da conversa e as possíveis perguntas para a IA
-    // A IA precisa decidir qual pergunta fazer em seguida
     const chat = genAI
       .getGenerativeModel({ model: "gemini-1.5-flash" })
       .startChat({
         history: [
           {
             role: "user",
-            parts: [{ text: PERSONA_PROMPT + "\n\n" + ALL_POSSIBLE_QUESTIONS }],
+            parts: [{ text: PERSONA_PROMPT + "\n\n" + ALL_POSSILBE_QUESTIONS }], // Contexto da conversa + Persona
           },
           {
             role: "model",
@@ -43,87 +46,121 @@ export async function startChatbot(genAI) {
               { text: "Compreendido. Estou pronto para guiar o cliente." },
             ],
           }, // Confirmação da IA
-          ...conversationHistory, // Adiciona o histórico da conversa
+          ...conversationHistory, // Adiciona historico da conversa
         ],
         generationConfig: {
-          maxOutputTokens: 200, // Ajustar conforme a necessidade da resposta da IA
-          temperature: 0.2, // Manter baixo para respostas mais focadas
+          maxOutputTokens: 200,
+          temperature: 0.2,
         },
       });
 
-    // A última mensagem do usuário (ou a informação inicial) será o prompt para a próxima pergunta
-    // Aqui a IA deve processar a última resposta e gerar a PRÓXIMA PERGUNTA ou A MENSAGEM FINAL
+    //Instrução para IA analisar a ultima resposta e decidir a próxima ação
     const promptForNextQuestion = `
-        Com base na última resposta do cliente (se houver, ou na informação inicial):
-        "${conversationHistory[conversationHistory.length - 1].parts[0].text}"
+        Com base na última resposta do cliente 
+                "${
+                  conversationHistory[conversationHistory.length - 1].parts[0]
+                    .text
+                }"
+                Faça a próxima pergunta pergunta da fila dentro da lista de "PERGUNTAS E AÇÕES DISPONIVEIS" ou se a conversa deve ser FINALIZADA
 
-        Determine a próxima pergunta MAIS LÓGICA da lista de "PERGUNTAS E OPÇÕES DISPONÍVEIS" para fazer ao cliente, OU se a conversa deve ser FINALIZADA.
+                Sua resposta deve ser APENAS a pergunta formatada (incluindo as opções numeradas fornecedias 1., 2., 3., 4.) ou mensagem de FINALIZAR CONVERSA
 
-        Sua resposta deve ser APENAS a pergunta formatada (incluindo opções numeradas 1., 2., 3., 4.) OU a mensagem FINALIZAR_CONVERSA:.
+                Se o cliente ainda não tiver fornecido todos os campos de NOME COMPLETO, EMAIL OU TELEFONE refaça a pergunta inicial pedindo as informações que faltam
+                
+                Após receber as informações de nome, email e telefone, NÃO repita a pergunta sobre essas informções
 
-        Se você precisar de uma informação que não está nas perguntas mas é essencial (como extrair o nome da primeira resposta), solicite-a diretamente.
-        Substitua '{{nome do cliente}}' pelo nome real do cliente.
-        `;
+                Caso o cliente seleciona uma opção não existente, reforce que ele escolha uma das opções
 
+                TAMBEM NÃO AVANCE PARA A PROXIMA PERGUNTA SEM QUE O CLIENTE ESCOLHA UMA DAS OPÇOES DE PERGUNTA
+
+                Substitua '{{Cliente}}' pelo nome do cliente.
+      `;
     let aiResponseContent = "";
     try {
+      // Envio da mensagem para a IA e Recebimento da resposta
       const result = await chat.sendMessage(promptForNextQuestion);
       aiResponseContent = result.response.text().trim();
     } catch (error) {
-      console.error("Erro ao gerar próxima pergunta pela IA:", error);
+      console.log("Error to generenate next question ", error);
       aiResponseContent =
-        "Desculpe, tive um problema e não consigo gerar a próxima pergunta. Por favor, tente novamente mais tarde.";
+        "Desculpe, tive um problema ao gerar a proxima pergunta. Por favor, tente novamente mais tarde";
     }
 
-    // Adiciona a resposta da IA ao histórico
+    //Atualização do historico da conversa;
     conversationHistory.push({
       role: "model",
       parts: [{ text: aiResponseContent }],
     });
 
-    // Verifica se a IA decidiu finalizar a conversa
-    if (aiResponseContent.startsWith("FINALIZAR_CONVERSA:")) {
+    if (
+      aiResponseContent.startsWith(
+        "FINALIZAR_CONVERSA:" ||
+          "FINALIZAR_CONVERSA_CONSULTORES:" ||
+          "FINALIZAR_CONVERSA_OUTRAS_CIDADANIAS:"
+      )
+    ) {
       console.log(
-        `\n${aiResponseContent.replace("FINALIZAR_CONVERSA:", "").trim()}`
+        `\n${aiResponseContent.replace("FINALIZAR_CONVERSA: ", "").trim()}`
       );
-      break; // Sai do loop
+      break;
     }
-
-    // Exibe a próxima pergunta gerada pela IA
     let displayQuestion = aiResponseContent.replace(
+      // Substitui o placeholder de nome
       "{{nome do cliente}}",
       clientName
     );
     console.log(`\n${displayQuestion}`);
 
-    // Captura a próxima resposta do cliente
     let clientAnswer = await new Promise((resolve) => {
       rl.question("Sua resposta: ", resolve);
     });
     conversationHistory.push({
       role: "user",
-      parts: [{ text: `Cliente: ${clientAnswer}` }],
+      parts: [{ text: `Cliente ${clientAnswer}` }],
     });
 
-    // Tente extrair o nome do cliente da primeira resposta livre
+    //Logica de extração de nome do cliente
     if (conversationHistory.length === 2 && clientName === "cliente") {
-      // A segunda entrada é a primeira resposta do usuário
-      // Você precisaria de um LLM aqui para extrair o nome ou uma Regex.
-      // Exemplo Simples (muito básico, mas para ilustrar):
       const nameMatch = clientInfo.match(
         /(?:meu nome é|chamo-me|sou)\s+([A-Za-z\s]+)/i
       );
-      if (nameMatch && nameMatch[1]) {
+      if (nameMatch && nameMatch[i]) {
         clientName = nameMatch[1].trim();
+        console.log(`Email: ${clientName}`);
       }
-      // Para uma extração robusta, você usaria o Gemini para "extrair o nome"
-      // de uma string livre, o que adicionaria mais uma chamada à API.
+    }
+
+    //Logica de extração de email do cliente
+    if (clientEmail === null || clientEmail === "email" || clientEmail === "") {
+      const emailMatch = clientInfo.match(
+        /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i
+      );
+      if (emailMatch && emailMatch[i]) {
+        clientEmail = emailMatch[1].trim();
+        console.log(`Email: ${clientEmail}`);
+      }
+    }
+
+    //Logica de extração de numero do cliente
+    if (
+      clientNumber === null ||
+      clientNumber === "numero" ||
+      clientNumber === ""
+    ) {
+      const numberMatch = clientInfo.match(
+        /(\(?\d{2}\)?\s?\d{4,5}-?\d{4}|\+\d{2}\s?\(?\d{2}\)?\s?\d{4,5}-?\d{4})/
+      );
+      if (numberMatch && numberMatch[i]) {
+        clientNumber = numberMatch[1].trim();
+        console.log(`Number: ${clientNumber}`);
+      }
     }
   } // Fim do while true
 
+  // ---Bloco de finalização de conversa---
   rl.close();
-  console.log("\nAtendimento finalizado. Obrigado!");
-  console.log("\n--- Histórico Completo da Conversa ---");
+  console.log("\nAtendimento finalizado Obrigado!");
+  console.log("\n-------- chat history --------");
   conversationHistory.forEach((msg) => {
     console.log(
       `${msg.role === "user" ? "CLIENTE" : "SR. GIOPPO"}: ${msg.parts[0].text}`

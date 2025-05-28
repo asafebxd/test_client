@@ -1,6 +1,5 @@
 import "dotenv/config";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import readline from "readline";
 import { startChatbot } from "./chatbot/chatbot.js";
 
 const GOOGLE_API_KEY = process.env.API_KEY;
