@@ -1,4 +1,4 @@
-const ALL_POSSILBE_QUESTIONS = `
+const ALL_POSSIBLE_QUESTIONS = `
 **Regras Essenciais:**
 1.  Sempre comece pedindo nome completo, e-mail e telefone, não prossiga na conversa sem obter essas 3 informações.
 2.  NÃO pergunte a cidade do cliente 
@@ -108,4 +108,4 @@ Em breve a consultora Núria entrará em contato pelo Whatsapp
 
 `;
 
-export default ALL_POSSILBE_QUESTIONS;
+export default ALL_POSSIBLE_QUESTIONS;
